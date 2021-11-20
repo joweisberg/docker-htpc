@@ -1,0 +1,482 @@
+version: "3.5"
+
+services:
+  watchtower:
+    container_name: watchtower
+    image: containrrr/watchtower:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file: .env
+    command: --interval 86400 --cleanup --remove-volumes
+    restart: unless-stopped
+    networks:
+      - web_net
+
+  traefik:
+    container_name: traefik
+    image: traefik:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/docker/traefik:/traefik
+      - /var/docker/traefik/certs:/certs
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.rule=Host(`proxy.$HOST`)"
+      - "traefik.http.routers.traefik.service=traefik"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+    env_file: .env
+    command:
+      - "--log.level=ERROR"
+#      - "--log.level=DEBUG"
+      - "--log.format=common"
+      - "--global.sendAnonymousUsage=false"
+      - "--serversTransport.insecureSkipVerify=true"
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      # Use stagging acme server to DEBUG certificates file
+#      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.letsencrypt.acme.email=$LE_MAIL"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/traefik/acme.json"
+      - "--accesslog=false"
+      - "--providers.file.filename=/traefik/servers.toml"
+      - "--providers.file.watch=true"
+    restart: unless-stopped
+    ports:
+      - $HTTP_PORT:80
+      - $HTTPS_PORT:443
+    networks:
+      - web_net
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.routers.portainer.rule=Host(`docker.$HOST`)"
+      - "traefik.http.routers.portainer.service=portainer"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.middlewares.portainer-header.headers.customResponseHeaders.customFrameOptionsValue=ALLORIGIN"
+      - "traefik.http.routers.portainer.middlewares=portainer-header"
+    env_file: .env
+    command: -H unix:///var/run/docker.sock --no-auth
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  glances:
+    container_name: glances
+    #image: nicolargo/glances:latest
+    image: joweisberg/glances:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/docker/glances:/glances/conf
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glances.entrypoints=web"
+      - "traefik.http.routers.glances.rule=Host(`monit.$HOST`)"
+      - "traefik.http.routers.glances.service=glances"
+      - "traefik.http.services.glances.loadbalancer.server.port=61208"
+    env_file: .env
+    environment:
+      - GLANCES_OPT=--webserver --byte --percpu
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    pid: host
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  vbox-http:
+    container_name: vbox-http
+    image: joweisberg/phpvirtualbox:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vbox-http.entrypoints=web"
+      - "traefik.http.routers.vbox-http.rule=Host(`vm.$HOST`)"
+#      - "traefik.http.routers.vbox-http.service=vbox-http"
+#      - "traefik.http.services.vbox-http.loadbalancer.server.port=80"
+    env_file: .env
+    environment:
+      - ID_HOSTPORT=$HOST_IP:18083
+      - ID_NAME=$HOST
+      - ID_USER=$VBOX_USR
+      - ID_PW=$VBOX_PWD
+      - CONF_vrde=on
+      - CONF_vrdeport=9000-9010
+      - CONF_vrdeaddress=
+      - CONF_noAuth=true
+      - CONF_browserRestrictFolders=/share/VirtualBox-VMs,/share/Software,
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  certs-extraction:
+    container_name: certs-extraction
+    image: joweisberg/certs-extraction:latest
+    volumes:
+      - /var/docker/traefik:/mnt/data
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  muximux:
+    container_name: muximux
+    image: linuxserver/muximux:latest
+    volumes:
+      - /var/docker/muximux:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.muximux.entrypoints=web"
+      - "traefik.http.routers.muximux.rule=Host(`media.$HOST`)"
+#      - "traefik.http.routers.muximux.service=muximux"
+#      - "traefik.http.services.muximux.loadbalancer.server.port=80"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  nzbget:
+    container_name: nzbget
+    image: linuxserver/nzbget:latest
+    volumes:
+      - /var/docker/nzbget:/config
+      - /var/docker/nzbget:/var/nzbget
+      - /share/Downloads:/downloads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nzbget.entrypoints=web"
+      - "traefik.http.routers.nzbget.rule=Host(`nzbget.$HOST`)"
+      - "traefik.http.routers.nzbget.service=nzbget"
+      - "traefik.http.services.nzbget.loadbalancer.server.port=6789"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  jackett:
+    container_name: jackett
+    image: linuxserver/jackett:latest
+    volumes:
+      - /var/docker/jackett:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jackett.entrypoints=web"
+      - "traefik.http.routers.jackett.rule=Host(`jackett.$HOST`)"
+      - "traefik.http.routers.jackett.service=jackett"
+      - "traefik.http.services.jackett.loadbalancer.server.port=9117"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  qbittorrent:
+    container_name: qbittorrent
+    image: linuxserver/qbittorrent:latest
+    volumes:
+      - /var/docker/qbittorrent:/config
+      - /share/Downloads:/downloads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent.entrypoints=web"
+      - "traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$HOST`)"
+      - "traefik.http.routers.qbittorrent.service=qbittorrent"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+    env_file: .env
+    environment:
+      - WEBUI_PORT=8080
+    restart: unless-stopped
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+      - jackett
+
+  bazarr:
+    container_name: bazarr
+    image: linuxserver/bazarr:latest
+    volumes:
+      - /var/docker/bazarr:/config
+      - /share/Movies:/movies
+      - /share/TV Shows:/tv
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bazarr.entrypoints=web"
+      - "traefik.http.routers.bazarr.rule=Host(`bazarr.$HOST`)"
+      - "traefik.http.routers.bazarr.service=bazarr"
+      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  radarr:
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    volumes:
+      - /var/docker/radarr:/config
+      - /share/Downloads:/downloads
+      - /share/Movies:/movies
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.entrypoints=web"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.$HOST`)"
+      - "traefik.http.routers.radarr.service=radarr"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+      - jackett
+      - qbittorrent
+      - nzbget
+      - bazarr
+
+  sonarr:
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    volumes:
+      - /var/docker/sonarr:/config
+      - /share/Downloads:/downloads
+      - /share/TV Shows:/tv
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.entrypoints=web"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.$HOST`)"
+      - "traefik.http.routers.sonarr.service=sonarr"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+      - jackett
+      - qbittorrent
+      - nzbget
+      - bazarr
+
+  lidarr:
+    container_name: lidarr
+    image: linuxserver/lidarr:latest
+    volumes:
+      - /var/docker/lidarr:/config
+      - /share/Downloads:/downloads
+      - /share/Music:/music
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lidarr.entrypoints=web"
+      - "traefik.http.routers.lidarr.rule=Host(`lidarr.$HOST`)"
+      - "traefik.http.routers.lidarr.service=lidarr"
+      - "traefik.http.services.lidarr.loadbalancer.server.port=8686"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+      - jackett
+      - qbittorrent
+      - nzbget
+
+  emby:
+    container_name: emby
+    image: emby/embyserver:latest
+    volumes:
+      - /var/docker/emby:/config
+      - /var/docker/traefik/certs:/mnt/certs    # SSL Certificates
+      - /share/Movies:/mnt/Movies
+      - /share/TV Shows:/mnt/TV Shows
+      - /share/Music:/mnt/Music
+      - /share/Pictures:/mnt/Photos
+      - /share/Videos:/mnt/Videos
+    devices:
+      - /dev/dri/renderD128:/dev/dri
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.emby.entrypoints=web"
+      - "traefik.http.routers.emby.rule=Host(`emby.$HOST`)"
+      - "traefik.http.routers.emby.service=emby"
+      - "traefik.http.services.emby.loadbalancer.server.port=8096"
+    env_file: .env
+    restart: unless-stopped
+    ports:
+      #- 8096:8096           # http
+      - 8920:8920           # https
+      - 1900:1900/udp       # UPnP/DLNA server
+      - 7359:7359/udp       # UPnP/DLNA network discovery
+    # https://dev.to/fredlab/make-docker-containers-available-both-on-your-local-network-with-macvlan-and-on-the-web-with-traefik-2hj1
+    networks:
+      lan_net:
+        ipv4_address: $NETADDR.17
+      web_net:
+    #network_mode: host      # Needed for DLNA and Wake-on-Lan
+    depends_on:
+      - traefik
+
+  owncloud:
+    container_name: owncloud
+    image: owncloud/server:$OWNCLOUD_VERSION
+    volumes:
+      - /var/docker/owncloud:/mnt/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.owncloud_1.entrypoints=web"
+      - "traefik.http.routers.owncloud_1.rule=Host(`$HOST`) || Host(`$HOST_IP`) && PathPrefix(`/owncloud`)"
+#      - "traefik.http.routers.owncloud_1.service=owncloud"
+#      - "traefik.http.services.owncloud_1.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.owncloud_1-header.headers.customResponseHeaders.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.middlewares.owncloud_1-prefix.stripprefix.prefixes=/owncloud"
+      - "traefik.http.routers.owncloud_1.middlewares=owncloud_1-header,owncloud_1-prefix"
+
+      - "traefik.http.routers.owncloud.entrypoints=websecure"
+      - "traefik.http.routers.owncloud.rule=Host(`$DOMAIN`) && PathPrefix(`/owncloud`)"
+#      - "traefik.http.routers.owncloud.service=owncloud"
+#      - "traefik.http.services.owncloud.loadbalancer.server.port=443"
+      - "traefik.http.routers.owncloud.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.owncloud-prefix.stripprefix.prefixes=/owncloud"
+      - "traefik.http.routers.owncloud.middlewares=websecure-headers@file,owncloud-prefix"
+    env_file: .env
+    environment:
+      - OWNCLOUD_DOMAIN=$DOMAIN
+      - OWNCLOUD_ADMIN_USERNAME=owncloud
+      - OWNCLOUD_ADMIN_PASSWORD=OwnCloud@!
+      - OWNCLOUD_REDIS_ENABLED=true
+      - OWNCLOUD_REDIS_HOST=redis
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+      - redis
+      - onlyoffice
+
+  redis:
+    container_name: redis
+    image: webhippie/redis:latest
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - web_net
+
+  onlyoffice:
+    container_name: onlyoffice
+    image: onlyoffice/documentserver:latest
+    volumes:
+      - /var/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice
+      - /var/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.onlyoffice.entrypoints=websecure"
+      - "traefik.http.routers.onlyoffice.rule=Host(`$DOMAIN`) && PathPrefix(`/onlyoffice`)"
+#      - "traefik.http.routers.onlyoffice.service=onlyoffice"
+#      - "traefik.http.services.onlyoffice.loadbalancer.server.port=443"
+#      - "traefik.http.routers.onlyoffice.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.onlyoffice-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.onlyoffice-header.headers.customRequestHeaders.X-Forwarded-Host=$DOMAIN/onlyoffice"
+      - "traefik.http.middlewares.onlyoffice-prefix.stripprefix.prefixes=/onlyoffice"
+      - "traefik.http.routers.onlyoffice.middlewares=onlyoffice-https,onlyoffice-header,onlyoffice-prefix"
+    env_file: .env
+    stdin_open: true
+    restart: unless-stopped
+    ports:
+      - 8095:443        # https
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  motioneye:
+    container_name: motioneye
+    image: ccrisan/motioneye:master-amd64
+    volumes:
+      - /var/docker/motioneye/config:/etc/motioneye
+      - /mnt/cam-data:/var/lib/motioneye
+    devices:
+      - /dev/dri/renderD128
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.motioneye.entrypoints=web"
+      - "traefik.http.routers.motioneye.rule=Host(`cam.$HOST`)"
+      - "traefik.http.routers.motioneye.service=motioneye"
+      - "traefik.http.services.motioneye.loadbalancer.server.port=8765"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - web_net
+    depends_on:
+      - traefik
+
+  iperf:
+    container_name: iperf3
+    image: networkstatic/iperf3:latest
+    command: -s
+    restart: unless-stopped
+    ports:
+      - 5201:5201
+    networks:
+      - web_net
+
+networks:
+  web_net:
+    name: web
+    driver: bridge
+    external: true
+  lan_net:
+    name: macvlan0
+    driver: macvlan
+    driver_opts:
+      parent: $ETH                  # my ethernet interface
+    ipam:
+      config:
+        # subnet 192.168.1.16/29 = 192.168.1.17 --> 192.168.1.22, Hosts: 6
+        - subnet: $NETADDR.16/29   # same subnet as my LAN router
