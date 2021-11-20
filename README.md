@@ -37,6 +37,6 @@ $ cd $HOME/docker-media && ./docker-build.sh
 7. HTPC web access:
 
 * http://media.htpc.local/ - HTPC console management
-![](https://raw.githubusercontent.com/joweisberg/rpi-docker-owncloud/master/.img/muximux.png)
+![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/muximux.png)
 * https://sub.example.com/owncloud (default login/password: admin/owncloud)
-![](https://raw.githubusercontent.com/joweisberg/rpi-docker-owncloud/master/.img/owncloud.png)
+![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/owncloud.png)
