@@ -3,27 +3,31 @@
 ## Requirements
 * Ubuntu 18.04 LTS or more
 * `Add hostname` or static lease on your router `to target HTPC IP address` (and the `Local domain: local`) (for local reverse-proxy setup):
-  * media.htpc.local
-  * monit.htpc.local
-  * proxy.htpc.local
-  * docker.htpc.local
-  * vm.htpc.local
-  * nzbget.htpc.local
-  * jackett.htpc.local
-  * qbittorrent.htpc.local
-  * bazarr.htpc.local
-  * radarr.htpc.local
-  * sonarr.htpc.local
-  * lidarr.htpc.local
-  * emby.htpc.local
-  * htpc.local/owncloud
-  * cam.htpc.local
+
+Example with HTPC IP address: 192.128.1.10
+
+| local hostname | local ip | local port | web port |
+| --- | --- | --- | --- |
+|  **media.htpc.local** | **192.128.1.10** | 80 | --- |
+|  monit.htpc.local | 192.128.1.10 | 80 | --- |
+|  proxy.htpc.local | 192.128.1.10 | 80 | 443 |
+|  docker.htpc.local | 192.128.1.10 | 80 | --- |
+|  vm.htpc.local | 192.128.1.10 | 80 | --- |
+|  nzbget.htpc.local | 192.128.1.10 | 80 | --- |
+|  jackett.htpc.local | 192.128.1.10 | 80 | --- |
+|  qbittorrent.htpc.local | 192.128.1.10 | 80 | --- |
+|  bazarr.htpc.local | 192.128.1.10 | 80 | --- |
+|  radarr.htpc.local | 192.128.1.10 | 80 | --- |
+|  sonarr.htpc.local | 192.128.1.10 | 80 | --- |
+|  lidarr.htpc.local | 192.128.1.10 | 80 | --- |
+|  **emby.htpc.local** | **192.128.1.17** | 8096 | 8920 |
+|  **htpc.local/owncloud** | 192.128.1.10 | 80 | 443 |
+|  cam.htpc.local | 192.128.1.10 | 80 | --- |
+
 * On your main router, `open firewall tcp ports` 80, 443 forward to target your HTPC IP address
 
 ## Install steps
-1. Write SD card with the preinstalled image w/ Rufus, and power on the HTPC
-
-4. Build and run docker applications
+1. Build and run docker applications
 
 Setup is located on docker-media/`.env`
 * `DOMAIN`: sub.example.com the domain name dns resolution
@@ -34,9 +38,9 @@ $ git clone https://github.com/joweisberg/docker-media.git
 $ cd $HOME/docker-media && ./docker-build.sh
 ```
 
-7. HTPC web access:
+2. HTPC web access:
 
 * http://media.htpc.local/ - HTPC console management
-![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/muximux.png)
+![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/home.png)
 * https://sub.example.com/owncloud (default login/password: admin/owncloud)
 ![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/owncloud.png)

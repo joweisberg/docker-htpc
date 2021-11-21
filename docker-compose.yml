@@ -379,8 +379,8 @@ services:
     env_file: .env
     environment:
       - OWNCLOUD_DOMAIN=$DOMAIN
-      - OWNCLOUD_ADMIN_USERNAME=owncloud
-      - OWNCLOUD_ADMIN_PASSWORD=OwnCloud@!
+      - OWNCLOUD_ADMIN_USERNAME=admin
+      - OWNCLOUD_ADMIN_PASSWORD=owncloud
       - OWNCLOUD_REDIS_ENABLED=true
       - OWNCLOUD_REDIS_HOST=redis
     healthcheck:

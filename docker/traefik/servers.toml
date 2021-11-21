@@ -1,0 +1,23 @@
+[http.routers]
+  [http.routers.openwrt]
+    entryPoints = ["websecure"]
+    rule = "Host(`sub.example.com`)"
+    service = "openwrt"
+    middlewares = ["websecure-headers"]
+    [http.routers.openwrt.tls]
+      certresolver = "letsencrypt"
+
+[http.middlewares]
+  [http.middlewares.websecure-headers.headers]
+    sslRedirect = true
+    stsSeconds = 31536000
+    stsIncludeSubdomains = true
+    stsPreload = true
+    forceSTSHeader = true
+    customFrameOptionsValue = "SAMEORIGIN"
+
+[http.services]
+  [http.services.openwrt]
+    [http.services.openwrt.loadBalancer]
+      [[http.services.openwrt.loadBalancer.servers]]
+        url = "http://openwrt"
