@@ -6,7 +6,7 @@
 
 Example with HTPC IP address: 192.128.1.10
 
-| local hostname | local ip | local port :unlock: | web port :key: |
+| local hostname | local ip | local port | web port :key: |
 | --- | --- | --- | --- |
 |  **media.htpc.local** | **192.128.1.10** | 80 | --- |
 |  monit.htpc.local | 192.128.1.10 | 80 | --- |
