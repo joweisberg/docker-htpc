@@ -6,7 +6,7 @@
 
 Example with HTPC IP address: 192.128.1.10
 
-| local hostname | local ip | local port | web port |
+| local hostname | local ip | local port | web port :key: |
 | --- | --- | --- | --- |
 |  **media.htpc.local** | **192.128.1.10** | 80 | --- |
 |  monit.htpc.local | 192.128.1.10 | 80 | --- |
@@ -22,6 +22,7 @@ Example with HTPC IP address: 192.128.1.10
 |  lidarr.htpc.local | 192.128.1.10 | 80 | --- |
 |  **emby.htpc.local** | **192.128.1.17** | 8096 | 8920 |
 |  **htpc.local/owncloud** | 192.128.1.10 | 80 | 443 |
+|  **onlyoffice.htpc.local** | 192.128.1.10 | 8095 | 8095 |
 |  cam.htpc.local | 192.128.1.10 | 80 | --- |
 
 * On your main router, `open firewall tcp ports` 80, 443 forward to target your HTPC IP address
