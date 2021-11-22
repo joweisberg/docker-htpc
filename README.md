@@ -30,18 +30,18 @@ Example with HTPC IP address: 192.128.1.10
 ## Install steps
 1. Build and run docker applications
 
-Setup is located on docker-media/`.env`
+Setup is located on docker-htpc/`.env`
 * `DOMAIN`: sub.example.com the domain name dns resolution
 
 ```bash
 $ echo "htpc" > /etc/hostname
-$ git clone https://github.com/joweisberg/docker-media.git
-$ cd $HOME/docker-media && ./docker-build.sh
+$ git clone https://github.com/joweisberg/docker-htpc.git
+$ cd $HOME/docker-htpc && ./docker-build.sh
 ```
 
 2. HTPC web access:
 
 * http://media.htpc.local/ - HTPC console management
-![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/home.png)
+![](.img/home.png)
 * https://sub.example.com/owncloud (default login/password: admin/owncloud)
-![](https://raw.githubusercontent.com/joweisberg/docker-media/main/.img/owncloud.png)
+![](.img/owncloud.png)
