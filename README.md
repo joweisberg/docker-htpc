@@ -1,4 +1,4 @@
-# HTPC media Dockerized Applications based on Ubuntu - docker-compose w/ watchtower, traefik, portainer, glances, vbox-http, certs-extraction, muximux, nzbget, jackett, qbittorrent, bazarr, radarr, sonarr, lidarr, emby, owncloud, redis, onlyoffice, motioneye, iperf3
+# HTPC media docker-compose based on Ubuntu with watchtower, traefik, portainer, glances, vbox-http, certs-extraction, muximux, nzbget, jackett, qbittorrent, bazarr, radarr, sonarr, lidarr, emby, owncloud, redis, onlyoffice, motioneye, iperf3
 
 ## Requirements
 * Ubuntu 18.04 LTS or more
